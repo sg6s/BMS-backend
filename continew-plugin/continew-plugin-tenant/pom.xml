@@ -14,4 +14,13 @@
 
     <name>${project.artifactId}</name>
     <description>租户插件</description>
+
+    <dependencies>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+        </dependency>
+    </dependencies>
 </project>

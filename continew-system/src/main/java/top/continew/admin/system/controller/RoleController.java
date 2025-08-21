@@ -23,11 +23,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.feiniaojin.gracefulresponse.api.ExcludeFromGracefulResponse;
 import top.continew.admin.common.base.controller.BaseController;
 import top.continew.admin.system.model.query.RoleQuery;
 import top.continew.admin.system.model.query.RoleUserQuery;
@@ -43,6 +45,7 @@ import top.continew.admin.system.service.UserRoleService;
 import top.continew.starter.extension.crud.annotation.CrudRequestMapping;
 import top.continew.starter.extension.crud.enums.Api;
 import top.continew.starter.extension.crud.model.query.PageQuery;
+import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.PageResp;
 
 import java.util.List;
@@ -111,5 +114,13 @@ public class RoleController extends BaseController<RoleService, RoleResp, RoleDe
     @GetMapping("/{id}/user/id")
     public List<Long> listUserId(@PathVariable("id") Long id) {
         return userRoleService.listUserIdByRoleId(id);
+    }
+
+    @ExcludeFromGracefulResponse
+    @Operation(summary = "导出角色", description = "导出角色数据")
+    @SaCheckPermission("system:role:export")
+    @GetMapping("/export")
+    public void exportRole(@Valid RoleQuery query, @Valid SortQuery sortQuery, HttpServletResponse response) {
+        baseService.exportRole(query, sortQuery, response);
     }
 }

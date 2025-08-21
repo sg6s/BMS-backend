@@ -16,6 +16,7 @@
 
 package top.continew.admin.system.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.alicp.jetcache.anno.CacheInvalidate;
@@ -39,15 +40,24 @@ import top.continew.admin.system.model.req.RoleReq;
 import top.continew.admin.system.model.req.RolePermissionUpdateReq;
 import top.continew.admin.system.model.resp.MenuResp;
 import top.continew.admin.system.model.resp.role.RoleDetailResp;
+import top.continew.admin.system.model.resp.role.RoleExportResp;
 import top.continew.admin.system.model.resp.role.RoleResp;
 import top.continew.admin.system.service.*;
+import top.continew.starter.core.exception.BaseException;
 import top.continew.starter.core.util.CollUtils;
 import top.continew.starter.core.util.validation.CheckUtils;
+import top.continew.starter.excel.util.ExcelUtils;
 import top.continew.starter.extension.crud.model.query.SortQuery;
 import top.continew.starter.extension.crud.model.resp.LabelValueResp;
 
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Collections;
 import java.util.List;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.util.Optional;
 import java.util.Set;
 
@@ -59,6 +69,7 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleResp, RoleDetailResp, RoleQuery, RoleReq> implements RoleService {
 
     @Resource
@@ -106,6 +117,9 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
         }
     }
 
+    @Resource
+    private RoleArchiveService roleArchiveService;
+
     @Override
     public void beforeDelete(List<Long> ids) {
         List<RoleDO> list = baseMapper.lambdaQuery()
@@ -116,6 +130,10 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
         CheckUtils.throwIf(isSystemData::isPresent, "所选角色 [{}] 是系统内置角色，不允许删除", isSystemData.orElseGet(RoleDO::new)
             .getName());
         CheckUtils.throwIf(userRoleService.isRoleIdExists(ids), "所选角色存在用户关联，请解除关联后重试");
+
+        // 归档角色
+        ids.forEach(roleArchiveService::archiveRole);
+
         // 删除角色和菜单关联
         roleMenuService.deleteByRoleIds(ids);
         // 删除角色和部门关联
@@ -258,5 +276,43 @@ public class RoleServiceImpl extends BaseServiceImpl<RoleMapper, RoleDO, RoleRes
             .eq(RoleDO::getCode, code)
             .ne(id != null, RoleDO::getId, id)
             .exists(), "编码为 [{}] 的角色已存在", code);
+    }
+
+    @Override
+    public void exportRole(RoleQuery query, SortQuery sortQuery, HttpServletResponse response) {
+        OutputStream outputStream = null;
+        try {
+            // 设置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("UTF-8");
+            // 处理中文文件名
+            String fileName = URLEncoder.encode("导出角色数据", "UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xlsx");
+
+            // 获取数据
+            List<RoleExportResp> list = BeanUtil.copyToList(this
+                .list(query, sortQuery), RoleExportResp.class);
+
+            // 获取输出流
+            outputStream = response.getOutputStream();
+
+            // 导出Excel
+            ExcelUtils.export(list, "导出角色数据", RoleExportResp.class, response);
+
+            // 刷新输出流
+            outputStream.flush();
+        } catch (Exception e) {
+            log.error("角色导出失败", e);
+            throw new BaseException("角色导出失败");
+        } finally {
+            // 关闭输出流
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    log.error("关闭输出流失败", e);
+                }
+            }
+        }
     }
 }

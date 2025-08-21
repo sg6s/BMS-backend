@@ -16,6 +16,7 @@
 
 package top.continew.admin.system.service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import top.continew.admin.common.base.service.BaseService;
 import top.continew.admin.common.context.RoleContext;
 import top.continew.admin.system.model.entity.RoleDO;
@@ -25,6 +26,7 @@ import top.continew.admin.system.model.req.RolePermissionUpdateReq;
 import top.continew.admin.system.model.resp.role.RoleDetailResp;
 import top.continew.admin.system.model.resp.role.RoleResp;
 import top.continew.starter.data.service.IService;
+import top.continew.starter.extension.crud.model.query.SortQuery;
 
 import java.util.List;
 import java.util.Set;
@@ -36,6 +38,15 @@ import java.util.Set;
  * @since 2023/2/8 23:15
  */
 public interface RoleService extends BaseService<RoleResp, RoleDetailResp, RoleQuery, RoleReq>, IService<RoleDO> {
+
+    /**
+     * 导出角色
+     *
+     * @param query      查询条件
+     * @param sortQuery  排序条件
+     * @param response   响应对象
+     */
+    void exportRole(RoleQuery query, SortQuery sortQuery, HttpServletResponse response);
 
     /**
      * 修改角色权限
